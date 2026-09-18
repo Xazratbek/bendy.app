@@ -11,7 +11,7 @@ permissions:
 jobs:
   release:
     name: Build and publish DMG
-    runs-on: macos-15
+    runs-on: macos-latest
 
     steps:
       - name: Check out source
