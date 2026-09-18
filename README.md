@@ -4,6 +4,12 @@
 
 BendyLocal is a native macOS menu bar utility that turns the last live frame of your display into a smooth 3D fold, driven by the physical hinge angle. The result is a MacBook experience inspired by the fluid opening and closing animation of iPhone 18: close the lid and your desktop folds away; open it again and the desktop unfolds before the live capture stream resumes.
 
+## About
+
+BendyLocal makes your MacBook desktop open and close with an iPhone 18-inspired fluid animation. It is a native Swift and Metal menu bar app for Apple Silicon Macs, designed around the physical lid hinge and local-only screen rendering.
+
+Suggested topics: `macos`, `swift`, `swiftui`, `metal`, `screen-capture-kit`, `macbook`, `menubar-app`, `desktop-animation`.
+
 ![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-111827?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-Apple%20Silicon-111827?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-2f855a?style=flat-square)
