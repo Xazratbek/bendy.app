@@ -1,0 +1,25 @@
+import AppKit
+let image = NSImage(size: NSSize(width: 1024, height: 1024))
+image.lockFocus()
+let background = NSBezierPath(roundedRect: NSRect(x: 40, y: 40, width: 944, height: 944), xRadius: 214, yRadius: 214)
+NSColor(calibratedRed: 0.035, green: 0.09, blue: 0.105, alpha: 1).setFill(); background.fill()
+let mint = NSColor(calibratedRed: 0.38, green: 0.96, blue: 0.81, alpha: 1)
+for i in 0..<9 {
+    let offset = CGFloat(320 + i * 48)
+    let path = NSBezierPath()
+    path.move(to: NSPoint(x: 180, y: offset)); path.line(to: NSPoint(x: 320, y: offset))
+    path.move(to: NSPoint(x: 704, y: offset)); path.line(to: NSPoint(x: 844, y: offset))
+    path.move(to: NSPoint(x: offset, y: 180)); path.line(to: NSPoint(x: offset, y: 320))
+    path.move(to: NSPoint(x: offset, y: 704)); path.line(to: NSPoint(x: offset, y: 844))
+    mint.withAlphaComponent(0.45).setStroke(); path.lineWidth = 8; path.stroke()
+}
+let chip = NSBezierPath(roundedRect: NSRect(x: 295, y: 295, width: 434, height: 434), xRadius: 65, yRadius: 65)
+mint.withAlphaComponent(0.14).setFill(); chip.fill()
+mint.setStroke(); chip.lineWidth = 8; chip.stroke()
+let u = NSBezierPath()
+u.move(to: NSPoint(x: 409, y: 616)); u.line(to: NSPoint(x: 409, y: 465))
+u.curve(to: NSPoint(x: 615, y: 465), controlPoint1: NSPoint(x: 409, y: 332), controlPoint2: NSPoint(x: 615, y: 332))
+u.line(to: NSPoint(x: 615, y: 616)); u.lineWidth = 33; u.lineCapStyle = .round; mint.setStroke(); u.stroke()
+image.unlockFocus()
+let data = NSBitmapImageRep(data: image.tiffRepresentation!)!.representation(using: .png, properties: [:])!
+try data.write(to: URL(fileURLWithPath: CommandLine.arguments[1]))

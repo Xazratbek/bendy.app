@@ -1,0 +1,17 @@
+# Build products and local distribution artifacts
+.build/
+.dist/
+build/
+
+# macOS and editor files
+.DS_Store
+.vscode/
+
+# Swift tooling
+.swiftpm/
+DerivedData/
+
+# Local signing and diagnostics
+*.p12
+*.mobileprovision
+*.diagnostics.txt
