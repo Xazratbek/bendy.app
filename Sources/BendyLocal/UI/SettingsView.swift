@@ -58,117 +58,126 @@ struct SettingsView: View {
                     .toggleStyle(.switch)
             }
 
-            section("Style") {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(settings.allStyles) { style in
-                            styleChip(style)
-                        }
-                        Button {
-                            model.showingSaveStyle = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.callout.weight(.semibold))
-                                .frame(width: 30, height: 30)
-                        }
-                        .buttonStyle(.bordered)
-                        .clipShape(Circle())
-                        .help("Save the current sliders as a new style")
+            // The master switch stays outside this group: disabling it along
+            // with everything else would leave no way to turn the effect back on.
+            VStack(alignment: .leading, spacing: 22) {
+                options
+            }
+            .disabled(!settings.enabled)
+            .opacity(settings.enabled ? 1 : 0.5)
+        }
+    }
+
+    @ViewBuilder
+    private var options: some View {
+        section("Style") {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(settings.allStyles) { style in
+                        styleChip(style)
+                    }
+                    Button {
+                        model.showingSaveStyle = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.callout.weight(.semibold))
+                            .frame(width: 30, height: 30)
+                    }
+                    .buttonStyle(.bordered)
+                    .clipShape(Circle())
+                    .help("Save the current sliders as a new style")
+                }
+            }
+
+            Text(currentStyleBlurb)
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(height: 30, alignment: .top)
+        }
+
+        section("Intensity") {
+            slider("Blur", "camera.filters", $settings.blurScale, 0...2)
+            slider("Depth", "cube", $settings.perspectiveScale, 0...2)
+            slider("Shadow", "moon.fill", $settings.shadowScale, 0...2)
+            slider("Edge", "square.dashed", $settings.edgeScale, 0...3)
+        }
+
+        section("Behaviour") {
+            HStack(alignment: .top) {
+                labelled("Clears above", value: "\(Int(settings.engageAngle))°") {
+                    Slider(value: $settings.engageAngle, in: 30...115)
+                }
+                Button("Calibrate…") { model.showingCalibration = true }
+                    .controlSize(.small)
+                    .padding(.top, 20)
+            }
+            Text("Open the lid past this angle and the effect gets out of the way.")
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            labelled("Opening animation",
+                     value: String(format: "%.2fs", settings.unfoldDuration)) {
+                Slider(value: $settings.unfoldDuration, in: 0.3...1.5)
+            }
+            Text("A lid opens faster than the screen switches on, so the unfold runs on its own clock.")
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Toggle(isOn: $settings.soundEnabled) {
+                Text("Click when the effect clears").font(.callout)
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .padding(.top, 2)
+        }
+
+        section("Advanced") {
+            Toggle(isOn: $settings.batterySaver) {
+                Text("Reduce quality on battery").font(.callout)
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Display").font(.callout)
+                Picker("", selection: $settings.preferredDisplayID) {
+                    ForEach(model.availableDisplays) { option in
+                        Text(option.isBuiltIn ? "\(option.name) (built-in)" : option.name)
+                            .tag(option.id)
                     }
                 }
-
-                Text(currentStyleBlurb)
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(height: 30, alignment: .top)
+                .labelsHidden()
             }
-
-            section("Intensity") {
-                slider("Blur", "camera.filters", $settings.blurScale, 0...2)
-                slider("Depth", "cube", $settings.perspectiveScale, 0...2)
-                slider("Shadow", "moon.fill", $settings.shadowScale, 0...2)
-                slider("Edge", "square.dashed", $settings.edgeScale, 0...3)
-            }
-
-            section("Behaviour") {
-                HStack(alignment: .top) {
-                    labelled("Clears above", value: "\(Int(settings.engageAngle))°") {
-                        Slider(value: $settings.engageAngle, in: 30...115)
-                    }
-                    Button("Calibrate…") { model.showingCalibration = true }
-                        .controlSize(.small)
-                        .padding(.top, 20)
-                }
-                Text("Open the lid past this angle and the effect gets out of the way.")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                labelled("Opening animation",
-                         value: String(format: "%.2fs", settings.unfoldDuration)) {
-                    Slider(value: $settings.unfoldDuration, in: 0.3...1.5)
-                }
-                Text("A lid opens faster than the screen switches on, so the unfold runs on its own clock.")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Toggle(isOn: $settings.soundEnabled) {
-                    Text("Click when the effect clears").font(.callout)
-                }
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .padding(.top, 2)
-            }
-
-            section("Advanced") {
-                Toggle(isOn: $settings.batterySaver) {
-                    Text("Reduce quality on battery").font(.callout)
-                }
-                .toggleStyle(.switch)
-                .controlSize(.small)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Display").font(.callout)
-                    Picker("", selection: $settings.preferredDisplayID) {
-                        ForEach(model.availableDisplays) { option in
-                            Text(option.isBuiltIn ? "\(option.name) (built-in)" : option.name)
-                                .tag(option.id)
-                        }
-                    }
-                    .labelsHidden()
-                }
-
-                HStack {
-                    Label("Pause shortcut", systemImage: "keyboard")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(PauseHotKey.displayString)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 2)
-
-                HStack {
-                    Label("\(settings.bendCount) bends and counting", systemImage: "arrow.trianglehead.2.clockwise")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-            }
-
-            Divider()
 
             HStack {
-                Label("Auto safety enabled", systemImage: "checkmark.shield.fill")
+                Label("Pause shortcut", systemImage: "keyboard")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button("Reset to Defaults") { settings.resetToDefaults() }
-                    .controlSize(.regular)
+                Text(PauseHotKey.displayString)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.top, 2)
+
+            HStack {
+                Label("\(settings.bendCount) bends and counting", systemImage: "arrow.trianglehead.2.clockwise")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
             }
         }
-        .disabled(!settings.enabled)
-        .opacity(settings.enabled ? 1 : 0.5)
+
+        Divider()
+
+        HStack {
+            Label("Auto safety enabled", systemImage: "checkmark.shield.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button("Reset to Defaults") { settings.resetToDefaults() }
+                .controlSize(.regular)
+        }
     }
 
     private var currentStyleBlurb: String {

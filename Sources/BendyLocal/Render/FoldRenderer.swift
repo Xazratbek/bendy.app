@@ -224,9 +224,11 @@ final class FoldRenderer {
             cornerRadius: Float(style.cornerRadius),
             aspect: Float(size.width / max(size.height, 1))
         )
+        var panel = Self.panelTransform(fold: foldAmount, perspective: Float(style.perspective))
         encoder.setRenderPipelineState(foldPipeline)
         encoder.setVertexBuffer(gridBuffer, offset: 0, index: 0)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<FoldUniforms>.stride, index: 1)
+        encoder.setVertexBytes(&panel, length: MemoryLayout<simd_float3x3>.stride, index: 2)
         encoder.setFragmentTexture(source, index: 0)
         encoder.setFragmentTexture(blurB, index: 1)
         encoder.setFragmentBytes(&uniforms, length: MemoryLayout<FoldUniforms>.stride, index: 0)
@@ -259,6 +261,41 @@ final class FoldRenderer {
         if commandBuffer.status == .notEnqueued {
             commandBuffer.commit()
         }
+    }
+
+    /// Where the desktop sits on screen for a given fold, as a homography from
+    /// the content square to screen space (both 0–1, y up from the hinge).
+    ///
+    /// The desktop stays upright and lit while it settles: it keeps the full
+    /// height of the lid and narrows toward a centred panel, and mid-fold its
+    /// top edge pulls in further than the bottom, so it seems to hold still
+    /// facing you while the lid tips forward. `perspective` scales that
+    /// keystone; at fold 0 the transform is the identity.
+    static func panelTransform(fold: Float, perspective: Float) -> simd_float3x3 {
+        let f = min(max(fold, 0), 1)
+        let keystone = min(max(perspective, 0), 2) * 0.17 * sin(.pi * f)
+        let bottom = 1 - 0.36 * f
+        let top = bottom - keystone
+        let lift = 0.02 * f
+        return squareToQuad(
+            SIMD2(0.5 - bottom / 2, lift), SIMD2(0.5 + bottom / 2, lift),
+            SIMD2(0.5 + top / 2, 1 - lift), SIMD2(0.5 - top / 2, 1 - lift)
+        )
+    }
+
+    /// Heckbert's unit-square-to-quad projective map. Corners in order:
+    /// (0,0), (1,0), (1,1), (0,1).
+    private static func squareToQuad(_ p0: SIMD2<Float>, _ p1: SIMD2<Float>,
+                                     _ p2: SIMD2<Float>, _ p3: SIMD2<Float>) -> simd_float3x3 {
+        let d1 = p1 - p2, d2 = p3 - p2, d3 = p0 - p1 + p2 - p3
+        let denominator = d1.x * d2.y - d2.x * d1.y
+        let g = (d3.x * d2.y - d2.x * d3.y) / denominator
+        let h = (d1.x * d3.y - d3.x * d1.y) / denominator
+        return simd_float3x3(rows: [
+            SIMD3(p1.x - p0.x + g * p1.x, p3.x - p0.x + h * p3.x, p0.x),
+            SIMD3(p1.y - p0.y + g * p1.y, p3.y - p0.y + h * p3.y, p0.y),
+            SIMD3(g, h, 1),
+        ])
     }
 
     private func blurPass(commandBuffer: MTLCommandBuffer, from source: MTLTexture,

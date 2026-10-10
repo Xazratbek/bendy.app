@@ -42,6 +42,16 @@ struct OnboardingView: View {
                     .foregroundStyle(.red)
             }
 
+            HStack(alignment: .firstTextBaseline) {
+                Text("Already switched on, but still not detected?")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Reset & Ask Again") { model.resetAndRequest() }
+                    .controlSize(.small)
+                    .disabled(model.isResetting)
+            }
+
             Spacer(minLength: 0)
 
             HStack {
@@ -56,7 +66,7 @@ struct OnboardingView: View {
             }
         }
         .padding(24)
-        .frame(width: 480, height: 380)
+        .frame(width: 480, height: 420)
         .onAppear { model.startPolling() }
         .onDisappear { model.stopPolling() }
     }
@@ -75,6 +85,7 @@ struct OnboardingView: View {
 final class OnboardingModel: ObservableObject {
     @Published private(set) var state: ScreenPermission.State = .denied
     @Published private(set) var isChecking = false
+    @Published private(set) var isResetting = false
 
     var onGranted: (() -> Void)?
     private var pollTimer: Timer?
@@ -99,6 +110,18 @@ final class OnboardingModel: ObservableObject {
                 self.stopPolling()
                 self.onGranted?()
             }
+        }
+    }
+
+    /// For a System Settings entry that shows as on but belongs to an older
+    /// signature of the app: macOS keeps answering "denied" until it's redone.
+    func resetAndRequest() {
+        guard !isResetting else { return }
+        isResetting = true
+        Task {
+            await ScreenPermission.resetAndRequest()
+            self.isResetting = false
+            self.recheck()
         }
     }
 

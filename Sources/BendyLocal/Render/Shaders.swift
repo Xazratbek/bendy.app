@@ -28,7 +28,6 @@ enum Shaders {
     struct VertexOut {
         float4 position [[position]];
         float2 uv;
-        float  depth;
         float  along;
         float  shade;
     };
@@ -67,32 +66,26 @@ enum Shaders {
 
     vertex VertexOut foldVertex(uint vid [[vertex_id]],
                                 constant float2 *grid [[buffer(0)]],
-                                constant FoldUniforms &u [[buffer(1)]]) {
-        float2 p = grid[vid];
-        float2 uv = float2((p.x + 1.0) * 0.5, 1.0 - (p.y + 1.0) * 0.5);
+                                constant FoldUniforms &u [[buffer(1)]],
+                                constant float3x3 &panel [[buffer(2)]]) {
+        // Content position, 0–1 with y measured up from the hinge.
+        float2 content = (grid[vid] + 1.0) * 0.5;
 
-        float fromHinge = p.y + 1.0;
+        // `panel` (FoldRenderer.panelTransform) maps the desktop onto an
+        // upright, keystoned panel in screen space, also 0–1 from the hinge.
+        float3 q = panel * float3(content, 1.0);
+        float2 screen = q.xy / q.z;
 
-        float angle = u.fold * 1.43;
-        float rotatedY = fromHinge * cos(angle);
-        float z        = fromHinge * sin(angle);
-
-        z -= u.curvature * u.fold * sin(fromHinge * M_PI_F * 0.5) * 0.35;
-
-        float3 pos = float3(p.x, rotatedY - 1.0, z);
-
-        float w = 1.0 + pos.z * u.perspective;
-        w = max(w, 0.05);
-        float2 projected = pos.xy / w;
+        // A slight inward bow at mid-height while the panel is moving.
+        float bow = u.curvature * 0.06 * sin(M_PI_F * u.fold) * sin(M_PI_F * content.y);
+        screen.x = 0.5 + (screen.x - 0.5) * (1.0 - bow);
 
         VertexOut out;
-        out.position = float4(projected, 0.0, 1.0);
-        out.uv = uv;
-        out.depth = clamp(z * 0.5, 0.0, 1.0);
-        out.along = fromHinge * 0.5;
-
-        float facing = cos(angle);
-        out.shade = mix(1.0, facing, u.fold * 0.65) * (1.0 - u.fold * 0.22 * (fromHinge * 0.5));
+        // w = q.z so the rasterizer interpolates uv perspective-correctly.
+        out.position = float4((screen * 2.0 - 1.0) * q.z, 0.0, q.z);
+        out.uv = float2(content.x, 1.0 - content.y);
+        out.along = content.y;
+        out.shade = 1.0 - u.fold * 0.12 * content.y;
         return out;
     }
 
@@ -117,14 +110,16 @@ enum Shaders {
         color *= in.shade;
         color *= 1.0 - u.darkening * u.fold;
 
-        float topFall = pow(in.along, 1.6) * u.shadowStrength * u.fold;
+        // The panel stays lit like the reference fold: shadow and vignette only
+        // shade it, they never swallow the desktop.
+        float topFall = pow(in.along, 1.6) * u.shadowStrength * u.fold * 0.4;
         color *= 1.0 - topFall;
 
         float2 fromCentre = in.uv - 0.5;
         fromCentre.y -= 0.12;
         float corner = clamp(dot(fromCentre * float2(1.35, 1.75),
                                  fromCentre * float2(1.35, 1.75)) * 2.4, 0.0, 1.0);
-        color *= 1.0 - clamp(corner * u.vignette * u.fold, 0.0, 1.0);
+        color *= 1.0 - clamp(corner * u.vignette * u.fold * 0.5, 0.0, 1.0);
 
         float sweep = in.uv.y - (1.0 - u.fold * 1.7);
         float band = exp(-(sweep * sweep) / 0.02);
